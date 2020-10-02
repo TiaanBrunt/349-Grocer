@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+  <head><title>Database test page</title>
+    <style>
+      th { text-align: left; }
+
+      table, th, td {
+      border: 2px solid grey;
+      border-collapse: collapse;
+      }
+
+      th, td {
+      padding: 0.2em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Database test page</h1>
+
+    <p>Showing contents of orders table:</p>
+
+    <table border="1">
+      <tr><th>Order ID</th><th>Order Items</th><th>Total</th></tr>
+      <?php
+         $db_host   = '192.168.2.12';
+         $db_name   = 'fvision';
+         $db_user   = 'webuser';
+         $db_passwd = 'insecure_db_pw';
+
+
+         $connect = new mysqli($db_host, $db_user, $db_passwd, $db_name);
+         $qrry = "SELECT * FROM orders";
+         $q = $connect->query($qrry);
+         while($row = $q->fetch()) {
+         echo "<tr><td>".$row["orderID"]."</td><td>".$row["orderItems"]."</td><td>".$row["total"]."</td></tr>\n";
+         }
+      ?>
+      
+      
+    </table>
+  </body>
+</html>
