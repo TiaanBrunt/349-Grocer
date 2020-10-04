@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
     # they should be comma-separated (if you use more than one) within
     # square brackets.
     #
-    aws.security_groups = ["sg-0148bf2ad42e383b0"]
+    aws.security_groups = ["sg-0148bf2ad42e383b0", "sg-07fdd995451b7a2ff"]
 
     # For Vagrant to deploy to EC2 for Amazon Educate accounts, it
     # seems that a specific availability_zone needs to be selected
@@ -97,7 +97,7 @@ Vagrant.configure("2") do |config|
     # NOTE: This will enable public access to the opened port
     # config.vm.network "forwarded_port", guest: 80, host: 8080
 
-    adminweb.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+    ##adminweb.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
 
     # Create a forwarded port mapping which allows access to a specific port
     # within the machine from a port on the host machine and only allow access
@@ -107,7 +107,8 @@ Vagrant.configure("2") do |config|
     # Create a private network, which allows host-only access to the machine
     # using a specific IP.
     # config.vm.network "private_network", ip: "192.168.33.10"
-    adminweb.vm.network "private_network", ip: "192.168.2.11"
+    
+    ##adminweb.vm.network "private_network", ip: "192.168.2.11"
     
     # Create a public network, which generally matched to bridged network.
     # Bridged networks make the machine appear as another physical device on
@@ -119,7 +120,9 @@ Vagrant.configure("2") do |config|
     # the path on the guest to mount the folder. And the optional third
     # argument is a set of non-required options.
     # config.vm.synced_folder "../data", "/vagrant_data"
-    adminweb.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    
+    ##adminweb.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    
     # Provider-specific configuration so you can fine-tune various
     # backing providers for Vagrant. These expose provider-specific options.
     # Example for VirtualBox:
@@ -142,6 +145,7 @@ Vagrant.configure("2") do |config|
     #   apt-get update
     #   apt-get install -y apache2
     # SHELL
+    
     adminweb.vm.provision "shell", inline: <<-SHELL
     apt-get update
     apt-get install -y apache2 php libapache2-mod-php php-mysql
@@ -150,82 +154,29 @@ Vagrant.configure("2") do |config|
     # Change VM's webserver's configuration to use shared folder.
     # (Look inside test-website.conf for specifics.)
     cp /vagrant/adminweb.conf /etc/apache2/sites-available/
+
+
+    chmod 777 /vagrant
+    chmod 777 /vagrant/www
+    chmod 777 /vagrant/www/admin
+    chmod 777 /vagrant/www/admin/index.php
+    chmod 777 /vagrant/www/admin/orders.php
+    chmod 777 /vagrant/www/admin/authenticate.php
+    chmod 777 /vagrant/www/admin/server.php
+    chmod 777 /vagrant/www/admin/style.css
+
+
+
+
     # install our website configuration and disable the default
     a2ensite adminweb
     a2dissite 000-default
     service apache2 reload
+    a2enmod rewrite
+    a2dissite 000-default
+    service apache2 reload
   SHELL
   end
-
-  
-  # Here is the section for defining the database server, which I have
-  # named "dbserver".
-  config.vm.define "dbserver" do |dbserver|
-    dbserver.vm.hostname = "dbserver"
-    # Note that the IP address is different from that of the webserver
-    # above: it is important that no two VMs attempt to use the same
-    # IP address on the private_network.
-    dbserver.vm.network "private_network", ip: "192.168.2.12"
-    dbserver.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
-    
-    dbserver.vm.provision "shell", inline: <<-SHELL
-      # Update Ubuntu software packages.
-      apt-get update
-      
-      # We create a shell variable MYSQL_PWD that contains the MySQL root password
-      export MYSQL_PWD='insecure_mysqlroot_pw'
-
-      # If you run the `apt-get install mysql-server` command
-      # manually, it will prompt you to enter a MySQL root
-      # password. The next two lines set up answers to the questions
-      # the package installer would otherwise ask ahead of it asking,
-      # so our automated provisioning script does not get stopped by
-      # the software package management system attempting to ask the
-      # user for configuration information.
-      echo "mysql-server mysql-server/root_password password $MYSQL_PWD" | debconf-set-selections 
-      echo "mysql-server mysql-server/root_password_again password $MYSQL_PWD" | debconf-set-selections
-
-      # Install the MySQL database server.
-      apt-get -y install mysql-server
-
-      # Run some setup commands to get the database ready to use.
-      # First create a database.
-      echo "CREATE DATABASE fvision;" | mysql
-
-      # Then create a database user "webuser" with the given password.
-      echo "CREATE USER 'webuser'@'%' IDENTIFIED BY 'insecure_db_pw';" | mysql
-
-      # Grant all permissions to the database user "webuser" regarding
-      # the "fvision" database that we just created, above.
-      echo "GRANT ALL PRIVILEGES ON fvision.* TO 'webuser'@'%'" | mysql
-      
-      # Set the MYSQL_PWD shell variable that the mysql command will
-      # try to use as the database password ...
-      export MYSQL_PWD='insecure_db_pw'
-
-      # ... and run all of the SQL within the setup-database.sql file,
-      # which is part of the repository containing this Vagrantfile, so you
-      # can look at the file on your host. The mysql command specifies both
-      # the user to connect as (webuser) and the database to use (fvision).
-      cat /vagrant/setup-database.sql | mysql -u webuser fvision
-
-      # By default, MySQL only listens for local network requests,
-      # i.e., that originate from within the dbserver VM. We need to
-      # change this so that the webserver VM can connect to the
-      # database on the dbserver VM. Use of `sed` is pretty obscure,
-      # but the net effect of the command is to find the line
-      # containing "bind-address" within the given `mysqld.cnf`
-      # configuration file and then to change "127.0.0.1" (meaning
-      # local only) to "0.0.0.0" (meaning accept connections from any
-      # network interface).
-      sed -i'' -e '/bind-address/s/127.0.0.1/0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
-
-      # We then restart the MySQL server to ensure that it picks up
-      # our configuration changes.
-      service mysql restart
-    SHELL
-  end
-
 
   config.vm.define "customerwebserver" do |customerwebserver|
     customerwebserver.vm.hostname = "customerwebserver"
@@ -237,7 +188,7 @@ Vagrant.configure("2") do |config|
     # NOTE: This will enable public access to the opened port
     # config.vm.network "forwarded_port", guest: 80, host: 8080
 
-    customerwebserver.vm.network "forwarded_port", guest: 80, host: 8081, host_ip: "127.0.0.1"
+    ##customerwebserver.vm.network "forwarded_port", guest: 80, host: 8081, host_ip: "127.0.0.1"
 
     # Create a forwarded port mapping which allows access to a specific port
     # within the machine from a port on the host machine and only allow access
@@ -247,7 +198,8 @@ Vagrant.configure("2") do |config|
     # Create a private network, which allows host-only access to the machine
     # using a specific IP.
     # config.vm.network "private_network", ip: "192.168.33.10"
-    customerwebserver.vm.network "private_network", ip: "192.168.2.13"
+    
+    ##customerwebserver.vm.network "private_network", ip: "192.168.2.13"
     
     # Create a public network, which generally matched to bridged network.
     # Bridged networks make the machine appear as another physical device on
@@ -255,7 +207,9 @@ Vagrant.configure("2") do |config|
     # config.vm.network "public_network"
 
     #Only needed for the lab computers
-    customerwebserver.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    
+    ## customerwebserver.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    
     # Provider-specific configuration so you can fine-tune various
     # backing providers for Vagrant. These expose provider-specific options.
     # Example for VirtualBox:
@@ -286,6 +240,15 @@ Vagrant.configure("2") do |config|
     # Change VM's webserver's configuration to use shared folder.
     # (Look inside test-website.conf for specifics.)
     cp /vagrant/customerweb.conf /etc/apache2/sites-available/
+
+    chmod 777 /vagrant
+    chmod 777 /vagrant/www
+    chmod 777 /vagrant/www/customer
+    chmod 777 /vagrant/www/customer/index.php
+    chmod 777 /vagrant/www/customer/server.php
+    chmod 777 /vagrant/www/customer/style.css
+    
+
     # install our website configuration and disable the default
     a2ensite customerweb
     a2enmod rewrite
