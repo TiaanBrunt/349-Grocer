@@ -2,7 +2,7 @@
 
 Tiaan Stevenson-Brunt (6603268)
 
-Basic e-commerce application for a business named 349 Grocer. Application is made up of 2 VM webservers and 1 database. Using vagrant the VM's are reployed as EC2 instances and the database is an RDS MYSQL database.
+An e-commerce application for a business named 349 Grocer. Application is made up of 2 VM webservers and 1 database. Using vagrant the VM's are reployed as EC2 instances and the database is an RDS MYSQL database.
 
 How to run
 1. This application uses both Vagrant and VirtualBox so before we can run the application itself users need to make sure they have Vagrant and VirtualBox installed on their computer. The latest versions of both software can be found at
